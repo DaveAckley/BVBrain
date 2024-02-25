@@ -1,10 +1,45 @@
 element Gridder + DTU {
   typedef Unsigned(8) Power;
   Power mPower;
-  //  typedef Unsigned(5) Kills;
-  //  Kills mKills;
+  typedef Unsigned(4) Flow;
+  Flow mInFlows[4];
   EventWindow ew;
   Random random;
+
+  @Override
+  virtual Void renderGraphics() {
+    Drawable drawable;
+    if (!drawable.canDraw()) return;
+
+    if (mPower == mPower.maxof) {
+      // just tiny cross to mark the grid
+      constant Int cWIDTH = 50;
+      constant Int cLENGTH = 300;
+      ARGB white = { 0xff, 0xff, 0xff, 0xff};
+      drawable.fillRectangle(C2D.instanceof(-cWIDTH/2,-cLENGTH/2), 
+                             C2D.instanceof(cWIDTH,cLENGTH),
+                             white);
+      drawable.fillRectangle(C2D.instanceof(-cLENGTH/2,-cWIDTH/2), 
+                             C2D.instanceof(cLENGTH,cWIDTH),
+                             white);
+      return;
+    }
+
+    ARGB oncol = self.getColor(0u);
+    drawable.fillRectangle(C2D.instanceof(-600,-600), // slightly oversize..
+                           C2D.instanceof(1200,1200),
+                           oncol);
+
+    MDist md; // No ew when rendering!  Can't use ew.getCoordRaw()!
+    constant Int cDIST = 128;
+    for (SN sn = 0u; sn < mInFlows.lengthof; ++sn) {
+      Int scaled = cDIST*mInFlows[sn];
+      C2D origin;
+      C2D sc = md.getSiteCoord((SN)(sn+1u))*origin.make(scaled,scaled);
+      drawable.drawMaskedLineUnits(origin,sc,oncol,oncol,0xffffffff, 100u, 100u);
+    }
+  }
+  
   @Override
   ARGB getColor(Unsigned selector) {
     ARGB ret = { 0xff, 0x00, 0x00, 0x00 };
@@ -44,8 +79,12 @@ element Gridder + DTU {
       SN othsn = (SN) enemypick.getIdx();
       Self& other = (Self&) ew[othsn];
 
-      other.mPower -= (ASCII) random.between(8u,32u);
-      mPower -= (ASCII) random.between(8u,32u);
+      constant ASCII cMINHIT = 5u;
+      ASCII weHit = (ASCII) (random.between(0u,mPower/2u)+cMINHIT);
+      ASCII theyHit = (ASCII) (random.between(0u,other.mPower/2u)+cMINHIT);
+
+      other.mPower -= weHit;
+      mPower -= theyHit;
 
       if (other.mPower == 0u)   // they can die
         ew[othsn] = Empty.instanceof;
@@ -64,24 +103,30 @@ element Gridder + DTU {
     if (friendpicktake.hasPick()) {
       SN frnsn = (SN) friendpicktake.getIdx();
       Self& friend = (Self&) ew[frnsn];
+      Unsigned frndir = frnsn-21u; // 0..3
 
       Int delta = (Int) friend.mPower - (Int) mPower;
       if (delta > 1) {          // They can stand to give to us
+        delta += mInFlows[frndir]; // take extra if it's a familiar flow
         ASCII shift = (ASCII) (delta/2);
         friend.mPower -= shift;
         mPower += shift;
-      } 
+        mInFlows[frndir]++;
+      } else mInFlows[frndir] /= 2u;
     }
     if (friendpickgive.hasPick()) {
       SN frnsn = (SN) friendpickgive.getIdx();
       Self& friend = (Self&) ew[frnsn];
+      Unsigned frndir = 3u-(frnsn-21u); // 3..0
 
       Int delta = (Int) mPower - (Int) friend.mPower;
       if (delta > 1) {          // We can stand to give to them
+        delta += friend.mInFlows[frndir]; // give extra if familiar flow
         ASCII shift = (ASCII) (delta/2);
         mPower -= shift;
         friend.mPower += shift;
-      } 
+        friend.mInFlows[frndir]++;
+      } else friend.mInFlows[frndir] /= 2u;
     }
   }
 }
