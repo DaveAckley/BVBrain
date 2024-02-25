@@ -1,0 +1,37 @@
+element RootSpreader + DTU {
+  EventWindow ew;
+  Random random;
+  SN mDir;
+  Unsigned(6) mSteps = Unsigned(6).maxof;
+  Void behave() {
+    if (mSteps-- == 0u) ew[0] = Gridder.instanceof; // deploy
+    else {
+      SN trysn = mDir;
+      if (random.oneIn(8))
+        trysn = (SN) random.between(1,8);
+      if (ew.isAccessible(trysn) &&
+          ew.isEmpty(trysn)) 
+        ew.swap(0u, trysn);
+    }
+  }
+}
+
+/** Global Phase War.
+    \author Dave Ackley
+    \copyright 2024 LCF
+    \license GPL-3
+    \symbol S
+    \version 14
+ */
+element S + DTU {
+  EventWindow ew;
+  Void behave() {
+    for (SN sn = 1u; sn <= 8u; ++sn) {
+      RootSpreader rs;
+      rs.mDir = sn;
+      ew[sn] = rs.atomof;
+    }
+    ew[0] = Empty.instanceof;
+  }
+}
+

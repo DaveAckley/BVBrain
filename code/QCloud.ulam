@@ -1,0 +1,96 @@
+transient QCloudState : Intention + DTU + QDebugUtils + Fail {
+
+  //// Intention API
+  @Override virtual Bool init(Intender & in) {
+    mD&&pR("CSINTIN10");
+    if (super.init(in)) return true;
+    return false;
+  }
+
+  @Override virtual Bool observe(Intender & in) {
+    mD&&pR("CSOBSIN10");
+    if (super.observe(in)) return true;
+    QCloud & qc = (QCloud&) in;
+    if (observeCloud(qc)) return true;
+    return false;
+  }
+
+  @Override virtual Bool stabilize(Intender & in) {
+    mD&&pR("CSSTBIN10");
+    if (super.stabilize(in)) return true;
+    return false;
+  }
+
+  @Override virtual Bool act(Intender & in) {
+    mD&&pR("CSACTIN10");
+    if (super.act(in)) return true;
+    QCloud & qc = (QCloud&) in;
+    if (actCloud(qc)) return true;
+    return false;
+  }
+
+
+  //////////
+  MinPick mMinChops;
+  MinPick mAccessible;
+  MinPick mEmpty;
+
+  Bool actCloud(QCloud& qc) {
+    // Spike demo pressure: Say target
+    // density is chops/2+2 from 0 to 8.
+    //
+    // XXX
+    return false;
+  }
+
+  Bool observeCloud(QCloud& qc) {
+    EventWindow ew;
+    for (SN sn = 1u; sn < 41u; ++sn) {
+      if (!ew.isAccessible(sn)) continue;
+      C2D ac = ew.getCoord(sn);
+      Unsigned eslen = ac.euclideanSquaredLength();
+      mAccessible.update(sn);
+      Atom& a = ew[sn];
+      if (a is Empty) mEmpty.update(sn);
+      else {
+        QCloud.Chops chops = qc.getChopsOf(a);
+        if (chops != chops.maxof)
+          mMinChops.update(sn,chops);
+      }
+    }
+
+    mD&&pR("CSCNAR");
+    mD&&pR(mAccessible);
+    mD&&pR(mEmpty);
+    mD&&pR(mMinChops);
+
+    return false;
+  }
+  
+
+}
+
+quark QCloud
+  : Intender
+  + DTU
+  + QDebugUtils
+{
+
+  //// Intender API
+  @Override
+  virtual ClassId getIntentionClass() { return QCloudState.classidof; }
+  
+  typedef Unsigned(6) Chops;
+  Chops mChops = Chops.maxof;
+
+  //// QCloud API
+  virtual Chops getChopsOf(Atom& a) { // default behavior
+    if (a as QCloud) return a.mChops;
+    return Chops.maxof;
+  }
+
+  virtual Bool isChopRoot() {
+    return mChops == 0u;
+  }
+}
+

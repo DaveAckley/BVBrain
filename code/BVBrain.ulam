@@ -1,0 +1,36 @@
+element BVBrain {
+  BVBrainStem mBS;
+  Unsigned mRoutings;
+
+  ASCII mSLFL, mSRFL, mSUPL;
+  ARGB getColor(Unsigned selector) {
+    ColorUtils cu;
+    return cu.color(mSLFL, mSRFL, mSUPL);
+  }
+
+  @Override
+  Void behave() {
+    if (!mBS.open()) return;
+    SMTerm tSLFL = mBS.readTermByName("SLFL");
+    if (!tSLFL.newValue()) return; // proxy for everybody else..
+    ++mRoutings;
+    SMTerm tSRFL = mBS.readTermByName("SRFL");
+    SMTerm tSUPL = mBS.readTermByName("SUPL");
+    SMTerm tMLR = mBS.readTermByName("MLR");
+    SMTerm tMRR = mBS.readTermByName("MRR");
+    mSLFL = tSLFL.getValue();
+    mSRFL = tSRFL.getValue();
+    mSUPL = tSUPL.getValue();
+    if (mSLFL > 250u || mSRFL > 250u || mSUPL > 250u) {
+      DebugUtils du;
+      du.printContext();
+      du.print("BEEEGSL");
+      du.print(tSLFL);      du.print(tSRFL);      du.print(tSUPL);
+    }
+    tMLR.setValue(mSRFL); // good ole
+    tMRR.setValue(mSLFL); //  BV 2b
+    mBS.writeTerm(tMLR);
+    mBS.writeTerm(tMRR);
+    mBS.close();
+  }
+}

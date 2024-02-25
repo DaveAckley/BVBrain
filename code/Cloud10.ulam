@@ -1,0 +1,15 @@
+element Cloud10 : QCloud {
+  Void behave() {
+    pursueIntention();
+  }
+}
+
+element SeedCloud {
+  Void behave() {
+    Cloud10 c;
+    c.mChops = 0u;
+    c.setDebugOutputEnabled(true); //XXX
+    EventWindow ew;
+    ew[0] = c.atomof;
+  }
+}

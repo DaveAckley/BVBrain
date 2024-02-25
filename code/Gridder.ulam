@@ -1,0 +1,89 @@
+element Gridder + DTU {
+  typedef Unsigned(8) Power;
+  Power mPower;
+  //  typedef Unsigned(5) Kills;
+  //  Kills mKills;
+  EventWindow ew;
+  Random random;
+  @Override
+  ARGB getColor(Unsigned selector) {
+    ARGB ret = { 0xff, 0x00, 0x00, 0x00 };
+    if (mPower == mPower.maxof) ret[3] = 0x60;
+    else {
+      ret[1] = (ASCII) min(0xff,16u*mPower);
+      ret[2] = (ASCII) min(0xff, 4u*mPower);
+      ret[3] = (ASCII) min(0xff, 1u*mPower);
+    }
+    return ret;
+  }
+
+  @Override
+  Void behave() {
+    if (random.oneIn(3u)) ++mPower;
+
+    MinPick emptypick;
+    MinPick friendpickgive;
+    MaxPick friendpicktake;
+    MinPick enemypick;
+
+    for (SN sn = 1u; sn < 41u; ++sn) {
+      if (!ew.isAccessible(sn)) continue;
+      Atom & a = ew[sn];
+      if (sn >= 21u && sn <= 24u) { // should be grid
+        if (a is Empty) emptypick.update(sn);
+        else if (a as Self) {
+          friendpickgive.update(sn,a.mPower); // want least powerful friend
+          friendpicktake.update(sn,a.mPower); // want most powerful friend
+        }
+      } else {                  // shouldn't be grid
+        if (a is Self) enemypick.update(sn);
+      }
+    }
+
+    if (enemypick.hasPick()) { // highest priority
+      SN othsn = (SN) enemypick.getIdx();
+      Self& other = (Self&) ew[othsn];
+
+      other.mPower -= (ASCII) random.between(8u,32u);
+      mPower -= (ASCII) random.between(8u,32u);
+
+      if (other.mPower == 0u)   // they can die
+        ew[othsn] = Empty.instanceof;
+
+      if (mPower == 0u) {       // and we can die too
+        ew[0] = Empty.instanceof;
+        return;
+      }
+    }
+    
+    if (emptypick.hasPick() && mPower > 1u) {
+      mPower /= 2u;                                  // Split our power with the newb
+      ew[(SN) emptypick.getIdx()] = self.atomof;
+    }
+
+    if (friendpicktake.hasPick()) {
+      SN frnsn = (SN) friendpicktake.getIdx();
+      Self& friend = (Self&) ew[frnsn];
+
+      Int delta = (Int) friend.mPower - (Int) mPower;
+      if (delta > 1) {          // They can stand to give to us
+        ASCII shift = (ASCII) (delta/2);
+        friend.mPower -= shift;
+        mPower += shift;
+      } 
+    }
+    if (friendpickgive.hasPick()) {
+      SN frnsn = (SN) friendpickgive.getIdx();
+      Self& friend = (Self&) ew[frnsn];
+
+      Int delta = (Int) mPower - (Int) friend.mPower;
+      if (delta > 1) {          // We can stand to give to them
+        ASCII shift = (ASCII) (delta/2);
+        mPower -= shift;
+        friend.mPower += shift;
+      } 
+    }
+  }
+}
+
+

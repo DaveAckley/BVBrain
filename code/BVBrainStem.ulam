@@ -1,0 +1,149 @@
+quark SMTerm {
+  Unsigned(2) mType; // none, sense, motor, both(?)
+  ASCII mIndex;
+  ASCII mValue;
+  Bool mIsNew;
+
+  Bool newValue() { return mIsNew; }
+
+  ASCII getIndex() { return mIndex; }
+  ASCII getValue() { return mValue; }
+
+  Bool setValue(ASCII value) {
+    Bool ret = false;
+    if (mType >= 2u) {
+      mValue = value;
+      ret = true;
+    }
+    return ret;
+  }
+}
+
+transient Str8 {
+  typedef ASCII Buf8[8];
+  Buf8 mBuf8;
+
+  Self(Buf8 b8) {
+    mBuf8 = b8;
+  }
+
+  Self(String str) {
+    Unsigned strlen = str.lengthof;
+    for (Unsigned i = 0u; i < 8u; ++i) {
+      if (i >= strlen) break;
+      mBuf8[i] = str[i];
+    }
+  }
+
+  Self(Self other) {
+    for (Unsigned i = 0u; i < 8u; ++i) {
+      mBuf8[i] = other[i];
+    }
+  }
+
+  ASCII & operator[](Unsigned idx) {
+    return mBuf8[idx];
+  }
+
+  Bool operator==(String other) {
+    DebugUtils du;
+    Unsigned othlen = other.lengthof;
+    //du.print("OP=");
+    //du.print(other);
+    for (Unsigned i = 0u; i < 8u; ++i) {
+      //du.print("LOODPD");
+      //du.print(i);
+      Bool havebuf = mBuf8[i] != 0;
+      Bool haveoth = i<othlen;
+      //du.print(havebuf);
+      //du.print(haveoth);
+
+      if (havebuf && haveoth) {
+        //du.print("BOGHD");
+        //du.print(mBuf8[i]);
+        //du.print(other[i]);
+        if (mBuf8[i] != other[i])
+          return false;
+        //du.print("AFKEDOI");
+      } else if (havebuf || haveoth) {
+        //du.print("ORHAVE");
+        return false;
+      } else break;
+    }
+    //du.print("OGJDKOTS");
+    return true;
+  }
+
+  Unsigned write(ByteStreamWriter& bsa) {
+    Unsigned i = 0u;
+    for (; i < 8u; ++i) {
+      ASCII byte = mBuf8[i];
+      if (byte == 0u) break;
+      bsa.writeByte(byte);
+    }
+    return i;
+  }
+}
+
+quark BVBrainStem {
+  typedef ARGB Version;
+  Version getVersion() native; // { Version v = { 1, 0, 0 ,0 }; return v; }
+
+  Bool open() native; //< load tags if needed, and latest sensory input, true if succeeded
+
+  Bool close() native; //< write motor output
+
+  /* Deprecated; use newSense(idx)
+     Bool newSenses() native; //< true iff first newSenses() call after open() actually read input.dat
+  */
+
+  typedef Unsigned(8) TermCount;
+  TermCount getNumTerms() native; //< across entire physiology
+
+  typedef ASCII Buf8[8];
+  Buf8 getTermName(TermCount index) native; //< ret[0] == 0 if illegal index
+
+  SMTerm readTermByName(String name) {
+    DebugUtils du;
+    Unsigned c = getNumTerms();
+    SMTerm ret;
+    for (Unsigned i = 0u; i < c; ++i) {
+      TermCount t = (TermCount) i;
+      Buf8 n8 = getTermName(t);
+      Str8 s8(n8);
+      //du.print("AZONSF");
+      //du.print(i);
+      //du.print(s8);
+      if (s8 == name) {
+        //du.print("DLSWSLCK");
+        ret = readTerm(t);
+        break;
+      }
+    }
+    //du.print("POPNG");
+    //du.print(ret);
+    return ret;
+  }
+
+  Unsigned(2) getTermType(TermCount index) native; // 0: illegal, 1:sensor, 2:motor, 3:reserved
+  ASCII getTermValue(TermCount index) native;
+  Bool setTermValue(TermCount index, ASCII value) native;
+
+  Bool newSense(TermCount index) native;
+
+  SMTerm readTerm(TermCount index) {
+    SMTerm ret;
+    ret.mIndex = index;
+    ret.mType = getTermType(index);
+    ret.mValue = getTermValue(index);
+    ret.mIsNew = newSense(index);
+    return ret;
+  }
+
+  Bool writeTerm(SMTerm term) {
+    Bool ret = false;
+    if (setTermValue(term.mIndex,term.mValue))
+      ret = true;
+    return ret;
+  }
+}

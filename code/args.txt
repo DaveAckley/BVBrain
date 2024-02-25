@@ -1,0 +1,4 @@
+{{5H5}} -n -a 0 -e 3 -p 15
+{{5H5}} -n -a 0 -e 0 -p 15 --accelerate 30
+{{1G1}} -n -a 0 -e 0 -p 15 --accelerate 30
+{{1G1}} -n -a 0
